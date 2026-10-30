@@ -4,9 +4,7 @@ name: Build Windows Desktop
 # 与 build-android.yml / build-linux.yml 互不干扰（不同文件名并发上传同一 Release 安全）。
 # macOS 暂不打包：缺 Xcode Rust 链接配置，详见 docs/release-process.md。
 on:
-  push:
-    tags:
-      - 'v*'
+  # 非 Android 客户端不参与 tag 自动构建；保留手动入口供维护测试。
   workflow_dispatch:
 
 # 附加附件到 GitHub Release 需要写权限。
