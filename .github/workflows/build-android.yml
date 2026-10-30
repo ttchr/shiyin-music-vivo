@@ -104,6 +104,14 @@ jobs:
           echo "path=$DST" >> "$GITHUB_OUTPUT"
           ls -lh "$DST"
 
+          # 校验 Gradle -PcustomPackageName 参数确实生效，防止静默打出默认包名。
+          actual_app_id=$(apkanalyzer manifest application-id "$DST")
+          if [ "$actual_app_id" != "$CUSTOM_PACKAGE_NAME" ]; then
+            echo "::error::包名不匹配：期望=$CUSTOM_PACKAGE_NAME 实际=$actual_app_id"
+            exit 1
+          fi
+          echo "Verified applicationId: $actual_app_id"
+
           # 版本一致性守卫（仅 tag 为 x.y.z 时校验）。
           if [[ "${{ github.ref_name }}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
             tag_ver="${BASH_REMATCH[1]}"
