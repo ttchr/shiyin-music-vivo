@@ -8,9 +8,7 @@ name: Build Linux Desktop
 # （actions/runner-images#14254）；届时改 runs-on 为 ubuntu-24.04 即可，
 # 但产物 glibc 基线将升至 2.39（放弃 22.04 用户），详见 docs/release-process.md。
 on:
-  push:
-    tags:
-      - 'v*'
+  # 非 Android 客户端不参与 tag 自动构建；保留手动入口供维护测试。
   workflow_dispatch:
 
 # 附加附件到 GitHub Release 需要写权限。
