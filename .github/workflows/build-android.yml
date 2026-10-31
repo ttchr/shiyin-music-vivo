@@ -65,24 +65,36 @@ jobs:
           shared-key: android-arm64
           save-if: ${{ github.event_name != 'pull_request' }}
 
-      # 如未配置 Release keystore，回退 debug 签名，仅用于临时验证。
-      - name: Prepare release signing
+      # 正式 Release 必须使用仓库 Secrets 中的发布证书；不再静默回退 Debug 签名。
+      - name: Prepare and verify release signing
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        shell: bash
         run: |
-          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
-            cat > android/key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=shiyin
-          keyPassword=$KEYSTORE_PASSWORD
-          EOF
-            echo "Using release keystore from secrets."
-          else
-            echo "Release keystore secrets not configured; falling back to debug signing."
+          set -euo pipefail
+
+          if [[ -z "$KEYSTORE_B64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            echo "::error::Release signing secrets are incomplete. Configure RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD."
+            exit 1
           fi
+
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/release.keystore
+          test -s android/app/release.keystore
+
+          keytool -list \
+            -keystore android/app/release.keystore \
+            -alias "$KEY_ALIAS" \
+            -storepass "$KEYSTORE_PASSWORD" \
+            > /dev/null
+
+          printf 'storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" \
+            > android/key.properties
+
+          echo "Release keystore decoded and alias verified."
 
       - name: Build Android 64-bit Impeller APK
         run: >-
